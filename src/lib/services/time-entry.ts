@@ -119,7 +119,7 @@ export async function createTimeEntry(params: CreateTimeEntryParams) {
   });
 
   // Determine initial status based on approval settings
-  let status = TimeEntryStatus.APPROVED;
+  let status: TimeEntryStatus = TimeEntryStatus.APPROVED;
   if (settings?.approvalType === "ALL_ENTRIES") {
     status = TimeEntryStatus.PENDING;
   } else if (settings?.approvalType === "FULL_DAY_ONLY" && isFullDay) {
