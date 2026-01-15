@@ -33,13 +33,13 @@ const navItems = [
     title: "Time Entry",
     href: "/time-entry",
     icon: Clock,
-    roles: ["EMPLOYEE", "COMPANY_ADMIN"],
+    roles: ["EMPLOYEE"],
   },
   {
     title: "History",
     href: "/history",
     icon: History,
-    roles: ["EMPLOYEE", "COMPANY_ADMIN"],
+    roles: ["EMPLOYEE"],
   },
   {
     title: "divider",

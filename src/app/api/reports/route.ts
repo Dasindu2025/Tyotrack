@@ -30,6 +30,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Status filter - default to approved only, but can include pending
+    const statusParam = searchParams.get("includeStatus") || "approved";
+    const statusFilter = statusParam === "all" 
+      ? { not: "DRAFT" }  // Exclude only drafts
+      : statusParam === "pending" 
+        ? { in: ["APPROVED", "PENDING"] }  // Include pending
+        : "APPROVED";  // Default: approved only
+
     // Regular employees can only see their own reports
     const effectiveEmployeeId = isAdmin && employeeId 
       ? employeeId : context.user.userId;
@@ -43,7 +51,7 @@ export async function GET(req: NextRequest) {
       parent: {
         companyId: context.companyId,
         employeeId: effectiveEmployeeId,
-        status: { not: "REJECTED" },
+        status: statusFilter,
       },
     };
 
@@ -73,6 +81,11 @@ export async function GET(req: NextRequest) {
       dayMinutes: 0,
       eveningMinutes: 0,
       nightMinutes: 0,
+      byStatus: {
+        approved: { totalMinutes: 0, dayMinutes: 0, eveningMinutes: 0, nightMinutes: 0 },
+        pending: { totalMinutes: 0, dayMinutes: 0, eveningMinutes: 0, nightMinutes: 0 },
+        rejected: { totalMinutes: 0, dayMinutes: 0, eveningMinutes: 0, nightMinutes: 0 },
+      } as Record<string, { totalMinutes: number; dayMinutes: number; eveningMinutes: number; nightMinutes: number }>,
       byEmployee: {} as Record<string, {
         name: string;
         totalMinutes: number;
@@ -93,6 +106,7 @@ export async function GET(req: NextRequest) {
         dayMinutes: number;
         eveningMinutes: number;
         nightMinutes: number;
+        projects: string[];
       }>,
     };
 
@@ -145,12 +159,26 @@ export async function GET(req: NextRequest) {
           dayMinutes: 0,
           eveningMinutes: 0,
           nightMinutes: 0,
+          projects: [],
         };
       }
       totals.byDate[dateKey].totalMinutes += segment.durationMinutes;
       totals.byDate[dateKey].dayMinutes += segment.dayMinutes;
       totals.byDate[dateKey].eveningMinutes += segment.eveningMinutes;
       totals.byDate[dateKey].nightMinutes += segment.nightMinutes;
+      // Add project name if not already included
+      if (!totals.byDate[dateKey].projects.includes(segment.project.name)) {
+        totals.byDate[dateKey].projects.push(segment.project.name);
+      }
+
+      // By status (track approved/pending separately)
+      const status = segment.parent.status.toLowerCase();
+      if (totals.byStatus[status]) {
+        totals.byStatus[status].totalMinutes += segment.durationMinutes;
+        totals.byStatus[status].dayMinutes += segment.dayMinutes;
+        totals.byStatus[status].eveningMinutes += segment.eveningMinutes;
+        totals.byStatus[status].nightMinutes += segment.nightMinutes;
+      }
     }
 
     return NextResponse.json({
