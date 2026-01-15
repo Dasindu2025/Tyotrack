@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://tyotrack_user:Tyotrack@13!#@postgres:5432/tyotrack?schema=public
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - JWT_ACCESS_EXPIRY=15m
+      - JWT_REFRESH_EXPIRY=7d
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - tyotrack-network
+
+  postgres:
+    image: postgres:16-alpine
+    # NO external port exposure for production security
+    environment:
+      POSTGRES_DB: tyotrack
+      POSTGRES_USER: tyotrack_user
+      POSTGRES_PASSWORD: Tyotrack@13!#
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U tyotrack_user -d tyotrack" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - tyotrack-network
+
+volumes:
+  postgres_data:
+
+
+networks:
+  tyotrack-network:
+    driver: bridge

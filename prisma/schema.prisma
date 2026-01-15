@@ -1,0 +1,311 @@
+// Prisma Schema for Tyotrack - Work Time & Project Tracking
+// Multi-tenant architecture with complete data isolation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// CORE MODELS
+// ============================================
+
+enum Role {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum TimeEntryStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  LOCKED
+}
+
+enum ApprovalType {
+  ALL_ENTRIES
+  FULL_DAY_ONLY
+  EDITS_ONLY
+  NONE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  LOCK
+  UNLOCK
+}
+
+// ============================================
+// COMPANY (TENANT)
+// ============================================
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logo        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  users              User[]
+  projects           Project[]
+  workingHourRules   WorkingHourRule[]
+  companySettings    CompanySettings?
+  auditLogs          AuditLog[]
+
+  @@map("companies")
+}
+
+// ============================================
+// COMPANY SETTINGS
+// ============================================
+
+model CompanySettings {
+  id                    String       @id @default(cuid())
+  companyId             String       @unique
+  approvalType          ApprovalType @default(NONE)
+  defaultBackdateDays   Int          @default(7)
+  standardWorkingHours  Int          @default(8) // hours per day
+  autoLockAfterApproval Boolean      @default(true)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_settings")
+}
+
+// ============================================
+// WORKING HOUR RULES
+// ============================================
+
+model WorkingHourRule {
+  id         String   @id @default(cuid())
+  companyId  String
+  name       String   // "Day", "Evening", "Night"
+  startTime  String   // "08:00"
+  endTime    String   // "18:00"
+  multiplier Float    @default(1.0) // For overtime calculations
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("working_hour_rules")
+}
+
+// ============================================
+// USER
+// ============================================
+
+model User {
+  id              String     @id @default(cuid())
+  companyId       String?    // null for SUPER_ADMIN
+  email           String     @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  roles           Role[]
+  status          UserStatus @default(ACTIVE)
+  refreshToken    String?
+  lastLoginAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Relationships
+  company          Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeProfile  EmployeeProfile?
+  timeEntries      TimeEntryParent[] @relation("EmployeeEntries")
+  createdEntries   TimeEntryParent[] @relation("CreatedByEntries")
+  approvals        Approval[]
+  auditLogs        AuditLog[]
+
+  @@index([companyId])
+  @@index([email])
+  @@map("users")
+}
+
+// ============================================
+// EMPLOYEE PROFILE
+// ============================================
+
+model EmployeeProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  employeeCode     String?  // Optional employee code
+  backdateLimitDays Int     @default(7)
+  department       String?
+  position         String?
+  hireDate         DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("employee_profiles")
+}
+
+// ============================================
+// PROJECT
+// ============================================
+
+model Project {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  code        String?
+  description String?
+  color       String?  // Hex color for UI
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company      Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  timeSegments TimeEntrySegment[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("projects")
+}
+
+// ============================================
+// TIME ENTRY PARENT
+// ============================================
+
+model TimeEntryParent {
+  id            String          @id @default(cuid())
+  companyId     String
+  employeeId    String
+  createdById   String
+  date          DateTime        @db.Date // The primary date of the entry
+  isFullDay     Boolean         @default(false)
+  status        TimeEntryStatus @default(DRAFT)
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  employee   User               @relation("EmployeeEntries", fields: [employeeId], references: [id], onDelete: Cascade)
+  createdBy  User               @relation("CreatedByEntries", fields: [createdById], references: [id])
+  segments   TimeEntrySegment[]
+  approval   Approval?
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([date])
+  @@map("time_entry_parents")
+}
+
+// ============================================
+// TIME ENTRY SEGMENT
+// ============================================
+
+model TimeEntrySegment {
+  id              String   @id @default(cuid())
+  parentId        String
+  projectId       String
+  date            DateTime @db.Date // The specific date for this segment
+  startTime       String   // "09:00" format
+  endTime         String   // "17:00" format
+  durationMinutes Int
+  dayMinutes      Int      @default(0)
+  eveningMinutes  Int      @default(0)
+  nightMinutes    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  parent  TimeEntryParent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  project Project         @relation(fields: [projectId], references: [id])
+
+  @@index([parentId])
+  @@index([projectId])
+  @@index([date])
+  @@map("time_entry_segments")
+}
+
+// ============================================
+// APPROVAL
+// ============================================
+
+model Approval {
+  id           String          @id @default(cuid())
+  entryId      String          @unique
+  approvedById String?
+  status       TimeEntryStatus
+  reason       String?
+  approvedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  entry      TimeEntryParent @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  approvedBy User?           @relation(fields: [approvedById], references: [id])
+
+  @@map("approvals")
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  companyId   String?
+  userId      String
+  action      AuditAction
+  entityType  String      // "TimeEntry", "Project", "WorkingHourRule", etc.
+  entityId    String
+  oldValues   Json?       // Before state
+  newValues   Json?       // After state
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  user    User     @relation(fields: [userId], references: [id])
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================
+// EXPORT JOB (For async exports)
+// ============================================
+
+model ExportJob {
+  id          String   @id @default(cuid())
+  companyId   String
+  userId      String
+  type        String   // "CSV", "PDF"
+  status      String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  filters     Json?    // Filter parameters
+  filePath    String?  // Path to generated file
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([companyId])
+  @@index([status])
+  @@map("export_jobs")
+}
