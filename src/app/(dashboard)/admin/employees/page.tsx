@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Search, Edit, Mail, Calendar, Shield, MoreVertical } from "lucide-react";
+import { Search, Edit, Mail, Calendar, Shield, UserPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,16 @@ export default function EmployeesPage() {
   const [backdateDays, setBackdateDays] = useState(7);
   const [approvalType, setApprovalType] = useState("NONE");
 
+  // Add Employee Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newEmployee, setNewEmployee] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    roles: ["EMPLOYEE"] as string[],
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
@@ -51,6 +61,37 @@ export default function EmployeesPage() {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       toast.success("Employee settings updated!");
       setIsModalOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Create Employee Mutation
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof newEmployee) => {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create employee");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("Employee created successfully!");
+      setIsAddModalOpen(false);
+      setNewEmployee({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        roles: ["EMPLOYEE"],
+      });
     },
     onError: (error: any) => {
       toast.error(error.message);
@@ -105,6 +146,10 @@ export default function EmployeesPage() {
             Manage employee profiles, approval rules & backdate limits
           </p>
         </div>
+        <Button onClick={() => setIsAddModalOpen(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Add Employee
+        </Button>
       </div>
 
       <Card>
@@ -343,6 +388,117 @@ export default function EmployeesPage() {
             </div>
           </form>
         )}
+      </Modal>
+
+      {/* Add Employee Modal */}
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Add New Employee"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            createMutation.mutate(newEmployee);
+          }}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                First Name <span className="text-red-400">*</span>
+              </label>
+              <Input
+                type="text"
+                value={newEmployee.firstName}
+                onChange={(e) =>
+                  setNewEmployee({ ...newEmployee, firstName: e.target.value })
+                }
+                placeholder="John"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Last Name <span className="text-red-400">*</span>
+              </label>
+              <Input
+                type="text"
+                value={newEmployee.lastName}
+                onChange={(e) =>
+                  setNewEmployee({ ...newEmployee, lastName: e.target.value })
+                }
+                placeholder="Doe"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Email <span className="text-red-400">*</span>
+            </label>
+            <Input
+              type="email"
+              value={newEmployee.email}
+              onChange={(e) =>
+                setNewEmployee({ ...newEmployee, email: e.target.value })
+              }
+              placeholder="john.doe@company.com"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Password <span className="text-red-400">*</span>
+            </label>
+            <Input
+              type="password"
+              value={newEmployee.password}
+              onChange={(e) =>
+                setNewEmployee({ ...newEmployee, password: e.target.value })
+              }
+              placeholder="Minimum 8 characters"
+              minLength={8}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Role
+            </label>
+            <select
+              value={newEmployee.roles[0]}
+              onChange={(e) =>
+                setNewEmployee({ ...newEmployee, roles: [e.target.value] })
+              }
+              className="w-full h-10 px-3 rounded-lg bg-dark-400 border border-white/10 text-white focus:outline-none focus:border-neon-cyan/50"
+            >
+              <option value="EMPLOYEE">Employee</option>
+              <option value="COMPANY_ADMIN">Admin</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsAddModalOpen(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              isLoading={createMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              Create Employee
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
