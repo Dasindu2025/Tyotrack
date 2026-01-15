@@ -44,10 +44,6 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/scripts/start.sh ./start.sh
-
-# Make start script executable
-RUN chmod +x ./start.sh
 
 # Set ownership
 RUN chown -R nextjs:nodejs /app
@@ -59,4 +55,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["./start.sh"]
+CMD ["node", "server.js"]
