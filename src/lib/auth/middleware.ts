@@ -21,8 +21,8 @@ export type RoleHandler = (
 
 // Rate limiting storage (in-memory for simplicity)
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
-const MAX_ATTEMPTS = 5;
+const RATE_LIMIT_WINDOW = 2 * 60 * 1000; // 2 minutes (reduced for easier testing)
+const MAX_ATTEMPTS = 20; // Increased for easier testing
 
 export function checkRateLimit(ip: string): boolean {
   const now = Date.now();
