@@ -8,9 +8,9 @@ export function Header() {
   const { user, isAdmin } = useAuth();
 
   return (
-    <header className="h-16 glass border-b border-white/10 flex items-center justify-between px-6">
-      {/* Search */}
-      <div className="flex items-center gap-4 flex-1 max-w-md">
+    <header className="h-14 md:h-16 glass border-b border-white/10 flex items-center justify-between px-4 md:px-6">
+      {/* Search - hidden on small mobile, visible from sm up */}
+      <div className="hidden sm:flex items-center gap-4 flex-1 max-w-md">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <input
@@ -21,8 +21,11 @@ export function Header() {
         </div>
       </div>
 
+      {/* Spacer for mobile to push content right */}
+      <div className="flex-1 sm:hidden" />
+
       {/* Right side */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         {/* Notifications */}
         <button className="relative p-2 rounded-lg hover:bg-white/5 transition-colors">
           <Bell className="h-5 w-5 text-gray-400" />
@@ -30,11 +33,11 @@ export function Header() {
         </button>
 
         {/* User */}
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center text-dark-600 font-semibold text-sm">
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center text-dark-600 font-semibold text-xs md:text-sm">
             {user ? getInitials(user.firstName, user.lastName) : "?"}
           </div>
-          <div className="hidden sm:block">
+          <div className="hidden md:block">
             <p className="text-sm font-medium text-white">
               {user?.firstName} {user?.lastName}
             </p>

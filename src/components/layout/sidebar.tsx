@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   Clock,
@@ -15,10 +15,12 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const navItems = [
   {
@@ -79,27 +81,43 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 768) {
+        setIsCollapsed(true);
+      }
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Close mobile menu when navigating
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname]);
 
   const filteredNavItems = navItems.filter((item) => {
     if (!user) return false;
     return item.roles.some((role) => user.roles.includes(role));
   });
 
-  return (
-    <motion.aside
-      initial={false}
-      animate={{ width: isCollapsed ? 80 : 260 }}
-      className="fixed left-0 top-0 h-full glass border-r border-white/10 z-40 flex flex-col"
-    >
+  const sidebarContent = (
+    <>
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-white/10">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center shadow-glow">
+          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center shadow-glow flex-shrink-0">
             <Clock className="h-5 w-5 text-dark-600" />
           </div>
-          {!isCollapsed && (
+          {(!isCollapsed || isMobileOpen) && (
             <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -109,6 +127,15 @@ export function Sidebar() {
             </motion.span>
           )}
         </Link>
+        {/* Mobile close button */}
+        {isMobile && isMobileOpen && (
+          <button
+            onClick={() => setIsMobileOpen(false)}
+            className="ml-auto p-2 text-gray-400 hover:text-white"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -138,7 +165,7 @@ export function Sidebar() {
                   )}
                 >
                   <Icon className={cn("h-5 w-5 flex-shrink-0", isActive && "text-neon-cyan")} />
-                  {!isCollapsed && (
+                  {(!isCollapsed || isMobileOpen) && (
                     <motion.span
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -156,7 +183,7 @@ export function Sidebar() {
 
       {/* User & Logout */}
       <div className="border-t border-white/10 p-3">
-        {!isCollapsed && user && (
+        {(!isCollapsed || isMobileOpen) && user && (
           <div className="mb-3 px-3 py-2">
             <p className="text-sm font-medium text-white truncate">
               {user.firstName} {user.lastName}
@@ -169,21 +196,74 @@ export function Sidebar() {
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
         >
           <LogOut className="h-5 w-5" />
-          {!isCollapsed && <span className="text-sm font-medium">Logout</span>}
+          {(!isCollapsed || isMobileOpen) && <span className="text-sm font-medium">Logout</span>}
         </button>
       </div>
+    </>
+  );
 
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-20 h-6 w-6 rounded-full bg-surface border border-white/20 flex items-center justify-center hover:border-neon-cyan/50 transition-colors"
-      >
-        {isCollapsed ? (
-          <ChevronRight className="h-3 w-3" />
-        ) : (
-          <ChevronLeft className="h-3 w-3" />
+  return (
+    <>
+      {/* Mobile hamburger button */}
+      {isMobile && !isMobileOpen && (
+        <button
+          onClick={() => setIsMobileOpen(true)}
+          className="fixed top-4 left-4 z-50 p-2 rounded-lg glass border border-white/10 text-gray-400 hover:text-white md:hidden"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+      )}
+
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {isMobile && isMobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileOpen(false)}
+            className="fixed inset-0 bg-black/60 z-40 md:hidden"
+          />
         )}
-      </button>
-    </motion.aside>
+      </AnimatePresence>
+
+      {/* Sidebar - Desktop */}
+      {!isMobile && (
+        <motion.aside
+          initial={false}
+          animate={{ width: isCollapsed ? 80 : 260 }}
+          className="fixed left-0 top-0 h-full glass border-r border-white/10 z-40 flex flex-col"
+        >
+          {sidebarContent}
+
+          {/* Collapse toggle - Desktop only */}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="absolute -right-3 top-20 h-6 w-6 rounded-full bg-surface border border-white/20 flex items-center justify-center hover:border-neon-cyan/50 transition-colors"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-3 w-3" />
+            ) : (
+              <ChevronLeft className="h-3 w-3" />
+            )}
+          </button>
+        </motion.aside>
+      )}
+
+      {/* Sidebar - Mobile */}
+      <AnimatePresence>
+        {isMobile && isMobileOpen && (
+          <motion.aside
+            initial={{ x: -280 }}
+            animate={{ x: 0 }}
+            exit={{ x: -280 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed left-0 top-0 h-full w-[280px] glass border-r border-white/10 z-50 flex flex-col"
+          >
+            {sidebarContent}
+          </motion.aside>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
