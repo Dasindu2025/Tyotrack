@@ -44,6 +44,7 @@ export const updateUserSchema = z.object({
 // Employee Profile Schemas
 export const updateEmployeeProfileSchema = z.object({
   backdateLimitDays: z.number().min(0).max(365).optional(),
+  approvalType: z.enum(["ALL_ENTRIES", "FULL_DAY_ONLY", "EDITS_ONLY", "NONE"]).optional(),
   employeeCode: z.string().optional(),
   department: z.string().optional(),
   position: z.string().optional(),

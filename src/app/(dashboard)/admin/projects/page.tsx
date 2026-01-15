@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -126,21 +126,22 @@ export default function ProjectsPage() {
   ) || [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pl-12 md:pl-0">
         <div>
-          <h1 className="text-2xl font-bold">Projects</h1>
-          <p className="text-gray-400 mt-1">Manage company projects</p>
+          <h1 className="text-xl md:text-2xl font-bold">Projects</h1>
+          <p className="text-sm md:text-base text-gray-400 mt-1">Manage company projects</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto">
           <Plus className="h-4 w-4" />
           Add Project
         </Button>
       </div>
 
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
+        <CardHeader className="pb-2 md:pb-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
@@ -152,78 +153,141 @@ export default function ProjectsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-2 md:p-6">
           {isLoading ? (
             <TableSkeleton rows={5} />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Project</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Code</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Status</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProjects.map((project: any, index: number) => (
-                    <motion.tr
-                      key={project.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="border-b border-white/5 table-row-hover"
-                    >
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: project.color || "#00f5ff" }}
-                          />
-                          <div>
-                            <p className="font-medium">{project.name}</p>
-                            {project.description && (
-                              <p className="text-xs text-gray-500 truncate max-w-xs">
-                                {project.description}
-                              </p>
-                            )}
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Project</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Code</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Status</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-400">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProjects.map((project: any, index: number) => (
+                      <motion.tr
+                        key={project.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="border-b border-white/5 table-row-hover"
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: project.color || "#00f5ff" }}
+                            />
+                            <div>
+                              <p className="font-medium">{project.name}</p>
+                              {project.description && (
+                                <p className="text-xs text-gray-500 truncate max-w-xs">
+                                  {project.description}
+                                </p>
+                              )}
+                            </div>
                           </div>
+                        </td>
+                        <td className="py-3 px-4 text-gray-400">{project.code || "-"}</td>
+                        <td className="py-3 px-4">
+                          <Badge variant={project.isActive ? "success" : "error"}>
+                            {project.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(project)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm("Delete this project?")) {
+                                  deleteMutation.mutate(project.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-400" />
+                            </Button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden space-y-3">
+                {filteredProjects.map((project: any, index: number) => (
+                  <motion.div
+                    key={project.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="p-3 rounded-lg border border-white/10 bg-surface-light"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-4 h-4 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: project.color || "#00f5ff" }}
+                        />
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{project.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {project.code || "No code"}
+                          </p>
                         </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-400">{project.code || "-"}</td>
-                      <td className="py-3 px-4">
-                        <Badge variant={project.isActive ? "success" : "error"}>
-                          {project.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(project)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm("Delete this project?")) {
-                                deleteMutation.mutate(project.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-400" />
-                          </Button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleEdit(project)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            if (confirm("Delete this project?")) {
+                              deleteMutation.mutate(project.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      {project.description && (
+                        <p className="text-xs text-gray-500 truncate flex-1 mr-2">
+                          {project.description}
+                        </p>
+                      )}
+                      <Badge variant={project.isActive ? "success" : "error"} className="flex-shrink-0">
+                        {project.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -269,13 +333,14 @@ export default function ProjectsPage() {
               className="h-10 w-full rounded-lg border border-white/10 bg-surface cursor-pointer"
             />
           </div>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="ghost" onClick={handleCloseModal}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
+            <Button type="button" variant="ghost" onClick={handleCloseModal} className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
               type="submit"
               isLoading={createMutation.isPending || updateMutation.isPending}
+              className="w-full sm:w-auto"
             >
               {editProject ? "Update" : "Create"}
             </Button>
