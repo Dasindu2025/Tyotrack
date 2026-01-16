@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { clearQueryCache } from "@/components/providers";
 
 interface User {
   id: string;
@@ -65,6 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
+    // Clear any stale cached data from previous user before login
+    clearQueryCache();
+    
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -84,6 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
+      // Clear all cached data to prevent data leakage between users
+      clearQueryCache();
       setUser(null);
       router.push("/login");
     }
