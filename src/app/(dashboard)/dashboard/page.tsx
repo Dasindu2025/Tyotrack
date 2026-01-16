@@ -11,6 +11,7 @@ import {
   Calendar as CalendarIcon,
   Plus,
   Sun,
+  Sunset,
   Moon,
   Users,
   FolderKanban,
@@ -479,21 +480,14 @@ function EmployeeDashboard() {
   }, [data]);
 
   const totals = useMemo(() => {
-    const result = { week: 0, month: 0, day: 0, evening: 0, night: 0 };
-    const now = new Date();
-    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const result = { total: 0, month: 0, day: 0, evening: 0, night: 0 };
 
     Object.entries(hoursPerDay).forEach(([dateStr, hours]) => {
-      const date = new Date(dateStr);
+      result.total += hours.total;
       result.month += hours.total;
       result.day += hours.day;
       result.evening += hours.evening;
       result.night += hours.night;
-      
-      if (date >= weekStart && date <= weekEnd) {
-        result.week += hours.total;
-      }
     });
 
     return result;
@@ -538,11 +532,11 @@ function EmployeeDashboard() {
             <CardContent className="p-4 md:pt-6">
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-gradient-to-br from-neon-cyan/20 to-neon-cyan/5 flex items-center justify-center flex-shrink-0">
-                  <CalendarIcon className="h-5 w-5 md:h-6 md:w-6 text-neon-cyan" />
+                  <Clock className="h-5 w-5 md:h-6 md:w-6 text-neon-cyan" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs md:text-sm text-gray-400">This Week</p>
-                  <p className="text-xl md:text-2xl font-bold">{formatMinutesToHours(totals.week)}</p>
+                  <p className="text-xs md:text-sm text-gray-400">Total Hours</p>
+                  <p className="text-xl md:text-2xl font-bold">{formatMinutesToHours(totals.total)}</p>
                 </div>
               </div>
             </CardContent>
@@ -569,12 +563,12 @@ function EmployeeDashboard() {
           <Card>
             <CardContent className="p-4 md:pt-6">
               <div className="flex items-center gap-3 md:gap-4">
-                <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 flex items-center justify-center flex-shrink-0">
-                  <Sun className="h-5 w-5 md:h-6 md:w-6 text-yellow-400" />
+                <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-gradient-to-br from-orange-500/20 to-orange-500/5 flex items-center justify-center flex-shrink-0">
+                  <Sunset className="h-5 w-5 md:h-6 md:w-6 text-orange-400" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs md:text-sm text-gray-400">Day Hours</p>
-                  <p className="text-xl md:text-2xl font-bold">{formatMinutesToHours(totals.day)}</p>
+                  <p className="text-xs md:text-sm text-gray-400">Evening Hours</p>
+                  <p className="text-xl md:text-2xl font-bold">{formatMinutesToHours(totals.evening)}</p>
                 </div>
               </div>
             </CardContent>
@@ -590,7 +584,7 @@ function EmployeeDashboard() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs md:text-sm text-gray-400">Night Hours</p>
-                  <p className="text-xl md:text-2xl font-bold">{formatMinutesToHours(totals.night + totals.evening)}</p>
+                  <p className="text-xl md:text-2xl font-bold">{formatMinutesToHours(totals.night)}</p>
                 </div>
               </div>
             </CardContent>
