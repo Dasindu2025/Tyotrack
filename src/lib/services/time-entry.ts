@@ -446,3 +446,51 @@ export async function getTimeEntryById(entryId: string, companyId: string) {
 
   return entry;
 }
+
+/**
+ * Recalculate day/evening/night hours for all segments in a company
+ * Called when working hour rules are changed
+ */
+export async function recalculateAllSegments(companyId: string) {
+  // Get current working hour rules
+  const workingHourRules = await prisma.workingHourRule.findMany({
+    where: { companyId, isActive: true },
+  });
+
+  const rules: WorkingHourRule[] = workingHourRules.map((r) => ({
+    name: r.name,
+    startTime: r.startTime,
+    endTime: r.endTime,
+  }));
+
+  // Get all segments for this company
+  const segments = await prisma.timeEntrySegment.findMany({
+    where: {
+      parent: {
+        companyId,
+      },
+    },
+    include: {
+      parent: true,
+    },
+  });
+
+  // Update each segment with recalculated hour types
+  const updatePromises = segments.map(async (segment) => {
+    const hourTypes = calculateHourTypes(segment.startTime, segment.endTime, rules);
+    
+    return prisma.timeEntrySegment.update({
+      where: { id: segment.id },
+      data: {
+        dayMinutes: hourTypes.dayMinutes,
+        eveningMinutes: hourTypes.eveningMinutes,
+        nightMinutes: hourTypes.nightMinutes,
+      },
+    });
+  });
+
+  await Promise.all(updatePromises);
+
+  return { updated: segments.length };
+}
+

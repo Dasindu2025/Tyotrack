@@ -5,4 +5,6 @@ export {
   deleteTimeEntry,
   getTimeEntries,
   getTimeEntryById,
+  recalculateAllSegments,
 } from "./time-entry";
+

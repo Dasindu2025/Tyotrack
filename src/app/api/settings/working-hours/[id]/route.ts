@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getAuthContext } from "@/lib/auth";
 import { updateWorkingHourRuleSchema } from "@/lib/validations";
 import { createAuditLog } from "@/lib/services/audit";
+import { recalculateAllSegments } from "@/lib/services";
 import { AuditAction, Role } from "@prisma/client";
 
 export async function PATCH(
@@ -51,6 +52,9 @@ export async function PATCH(
       where: { id },
       data: result.data,
     });
+
+    // Recalculate all time entry segments with new rules
+    await recalculateAllSegments(context.companyId);
 
     // Audit log
     await createAuditLog({
